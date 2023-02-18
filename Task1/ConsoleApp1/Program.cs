@@ -17,8 +17,7 @@ namespace ConsoleApp1
     {
         static void Main(string[] args)
         {
-            string jsonPath = "D:\\Student\\Radency\\Task1\\ConsoleApp1\\Task1\\ConsoleApp1\\config.json";
-            Config jsonData = JsonSerializer.Deserialize<Config>(System.IO.File.ReadAllText(jsonPath)); 
+            Config jsonData = JsonSerializer.Deserialize<Config>(System.IO.File.ReadAllText("D:\\Student\\Radency\\Task1\\ConsoleApp1\\Task1\\ConsoleApp1\\config.json")); 
             
             var files_name = Directory.GetFiles(jsonData.path);
             foreach (var file in files_name)
