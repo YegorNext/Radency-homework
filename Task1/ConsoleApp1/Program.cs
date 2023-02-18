@@ -14,6 +14,24 @@ namespace ConsoleApp1
         public string path { get; set; }
 
     }
+    public class TransactionData
+    {
+        public string city { get; set; }
+        public IList<Services> services{ get; set; }
+    }
+    public class Services
+    {
+        public string name { get; set; }
+        public IList<Payers> payers { get; set; }
+
+    }
+    public class Payers
+    {
+        public string name { get; set; }
+        public decimal payment { get; set; }
+        public string date { get; set; }
+        public long account_number { get; set; }
+    }
     internal class Program
     {
         static void Main(string[] args)
@@ -38,6 +56,24 @@ namespace ConsoleApp1
              {
                 Console.WriteLine(Regex.IsMatch(line, pattern, RegexOptions.IgnoreCase));
             }
+            reader.Close();
+
+            ///Stage 3 - Transofrmation
+            var data = new TransactionData
+            {
+                city = "Dnipro",
+                services = new List<Services>()
+                {
+                    new Services() {name = "Gaz", payers = new List<Payers>(){ 
+                        new Payers(){name = "John", payment = Convert.ToDecimal(535.5), date = "353", account_number = 2352562}
+                    } }
+                }
+            };
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            string jsonString = JsonSerializer.Serialize(data, options);
+            Console.WriteLine(jsonString);
+
             Console.ReadLine();
         }
     }
