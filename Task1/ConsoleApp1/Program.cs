@@ -6,6 +6,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
+using System.Web;
 
 namespace ConsoleApp1
 {
@@ -31,6 +33,26 @@ namespace ConsoleApp1
         public decimal payment { get; set; }
         public string date { get; set; }
         public long account_number { get; set; }
+    }
+    public class FileProcessTransfer
+    {
+        private string line;
+        private string[] package;
+
+        public string Line
+        {
+            get { return line; }
+        }
+        FileProcessTransfer(string line)
+        {
+            this.line = line;
+            package = new string[5];
+        }
+
+        private void sepData()
+        {
+
+        }
     }
     internal class Program
     {
