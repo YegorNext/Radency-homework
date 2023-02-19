@@ -11,12 +11,15 @@ using System.Web;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows.Markup;
+using System.Collections.Concurrent;
+using System.Threading;
 
 namespace ConsoleApp1
 {
     public class Config
     {
-        public string path { get; set; }
+        public string folder_a_path { get; set; }
+        public string folder_b_path { get;set; }
 
     }
 
@@ -46,30 +49,50 @@ namespace ConsoleApp1
         static void Main(string[] args)
         {
             /// Stage 1 - Reading file names
-            Config jsonData = JsonSerializer.Deserialize<Config>(System.IO.File.ReadAllText("D:\\Student\\Radency\\Task1\\ConsoleApp1\\Task1\\ConsoleApp1\\config.json")); 
-            
-            var files_name = Directory.GetFiles(jsonData.path);
-            foreach (var file in files_name)
-            {
-                FileInfo fileinf = new FileInfo(file);
-                if (fileinf.Extension == ".txt" || fileinf.Extension == ".csv") Console.WriteLine(fileinf.Name + fileinf.Extension);
+            Config jsonData = JsonSerializer.Deserialize<Config>(System.IO.File.ReadAllText("D:\\Student\\Radency\\Task1\\ConsoleApp1\\Task1\\ConsoleApp1\\config.json"));
+            ConcurrentQueue<string> filepathes = new ConcurrentQueue<string>();
+            const int tasksNum = 3;
 
-            }
+            Task DirectoryReading = Task.Factory.StartNew(() =>
+            {
+                var files_name = Directory.GetFiles(jsonData.folder_a_path);
+                foreach (var file in files_name)
+                {
+                    FileInfo fileinf = new FileInfo(file);
+                    if (fileinf.Extension == ".txt" || fileinf.Extension == ".csv") {
+                        filepathes.Enqueue(file);
+                    };
+
+                }
+            });
+
 
 
             //// Stage 2 - Validating
-            StreamReader reader = new StreamReader("D:\\Student\\Radency\\Task1\\ConsoleApp1\\Task1\\Data\\t1_c1.txt");
-            string line, pattern = @"[a-z]+,[a-z]+,'[a-z]+,\s[a-z]+\s\d+,\s\d+',\d+[.]\d+,[0-9]{4}-[0-9]{2}-[0-9]{2},[0-9]+,[a-z]+";
-            
-            while((line = reader.ReadLine()) != null)
-             {
-                Console.WriteLine(Regex.IsMatch(line, pattern, RegexOptions.IgnoreCase));
+            var FileValidatingList = new List<Task>(); 
+            for(int i = 0; i < tasksNum; i++)
+            {
+                Task t = Task.Factory.StartNew(() =>
+                {
+                    Thread.Sleep(100);
+                    while (filepathes.TryDequeue(out var file))
+                    {
+                        StreamReader reader = new StreamReader(file);
+                        string line, pattern = @"[a-z]+,[a-z]+,'[a-z]+,\s[a-z]+\s\d+,\s\d+',\d+[.]\d+,[0-9]{4}-[0-9]{2}-[0-9]{2},[0-9]+,[a-z]+";
+
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            Console.WriteLine(Regex.IsMatch(line, pattern, RegexOptions.IgnoreCase));
+                        }
+                        reader.Close();
+                    }
+                });
+                FileValidatingList.Add(t);
             }
-            reader.Close();
 
+
+            Task.WaitAll(FileValidatingList.ToArray());
             ///Stage 3 - Transofrmation
-
-
             string[] str = new string[6]; string patt = @"'[a-z]+,\s[a-z]+\s[0-9]+,\s[0-9]+'";
             str[0] = "John,Doe,'Lviv, Kleparivska 35, 4',500.0,2022-27-01,1234567,Water";
             str[1] = "Mark,Doe,'Lviv, Kleparivska 35, 4',1250.35,2022-27-01,1234567,Gaz";
@@ -118,7 +141,7 @@ namespace ConsoleApp1
             
             var options = new JsonSerializerOptions { WriteIndented = true };
             string jsonString = JsonSerializer.Serialize(query, options);
-            Console.WriteLine(jsonString);
+           // Console.WriteLine(jsonString);
 
             Console.ReadLine();
         }
