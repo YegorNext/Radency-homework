@@ -49,9 +49,13 @@ namespace ConsoleApp1
         static void Main(string[] args)
         {
             /// Stage 1 - Reading file names
+            const int tasksNum = 3;
+            int ErrorCounter = 0, 
+                procLineCounter = 0, 
+                procFileCounter = 0;
+
             Config jsonData = JsonSerializer.Deserialize<Config>(System.IO.File.ReadAllText("D:\\Student\\Radency\\Task1\\ConsoleApp1\\Task1\\ConsoleApp1\\config.json"));
             ConcurrentQueue<string> filepathes = new ConcurrentQueue<string>();
-            const int tasksNum = 3;
 
             Task DirectoryReading = Task.Factory.StartNew(() =>
             {
@@ -69,8 +73,11 @@ namespace ConsoleApp1
 
 
             //// Stage 2 - Validating
-            var FileValidatingList = new List<Task>(); 
-            for(int i = 0; i < tasksNum; i++)
+            ConcurrentBag<string> validLines = new ConcurrentBag<string>();
+            ConcurrentBag<string> invalidFilesPath = new ConcurrentBag<string>();
+
+            var FileValidatingList = new List<Task>();
+            for (int i = 0; i < tasksNum; i++)
             {
                 Task t = Task.Factory.StartNew(() =>
                 {
@@ -79,38 +86,44 @@ namespace ConsoleApp1
                     {
                         StreamReader reader = new StreamReader(file);
                         string line, pattern = @"[a-z]+,[a-z]+,'[a-z]+,\s[a-z]+\s\d+,\s\d+',\d+[.]\d+,[0-9]{4}-[0-9]{2}-[0-9]{2},[0-9]+,[a-z]+";
-
+                       
+                        FileInfo fileinf = new FileInfo(file);
+                        bool invalidLine = false;
+                        if (fileinf.Extension == ".csv") reader.ReadLine();
                         while ((line = reader.ReadLine()) != null)
                         {
-                            Console.WriteLine(Regex.IsMatch(line, pattern, RegexOptions.IgnoreCase));
+                            if (Regex.IsMatch(line, pattern, RegexOptions.IgnoreCase))
+                            {
+                                validLines.Add(line);
+                                procLineCounter++;
+                            }
+                            else
+                            {
+                                ErrorCounter++;
+                                invalidLine= true;
+                            }
                         }
+                        if (invalidLine) invalidFilesPath.Add(file);
+                        procFileCounter++;
                         reader.Close();
                     }
                 });
                 FileValidatingList.Add(t);
             }
-
-
             Task.WaitAll(FileValidatingList.ToArray());
+
+
             ///Stage 3 - Transofrmation
-            string[] str = new string[6]; string patt = @"'[a-z]+,\s[a-z]+\s[0-9]+,\s[0-9]+'";
-            str[0] = "John,Doe,'Lviv, Kleparivska 35, 4',500.0,2022-27-01,1234567,Water";
-            str[1] = "Mark,Doe,'Lviv, Kleparivska 35, 4',1250.35,2022-27-01,1234567,Gaz";
-            str[2] = "Charlz,Doe,'Lviv, Kleparivska 35, 4',1250.35,2022-27-01,1234567,Gaz";
-            str[3] = "Carl,Doe,'Pavlograd, Kleparivska 35, 4',1250.35,2022-27-01,1234567,Gaz";
-            str[4] = "Sem,Doe,'Pavlograd, Kleparivska 35, 4',600.35,2022-27-01,1234567,Gaz";
-            str[5] = "Shara,Doe,'Pavlograd, Kleparivska 35, 4',250.35,2022-27-01,1234567,Water";
-
-
-            var database = from Line in str
-                           let toSplit = Regex.Match(Line, patt, RegexOptions.IgnoreCase).Value
+            string cityPattern = @"'[a-z]+,\s[a-z]+\s[0-9]+,\s[0-9]+'";
+            var database = from Line in validLines
+                           let toSplit = Regex.Match(Line, cityPattern, RegexOptions.IgnoreCase).Value
                            let SplitLine = Line.Replace(toSplit + ',', "").Split(',')
                            let city = toSplit.Replace("\'", "").Split(',')[0]
                            select new
                            {
                                city,
                                service_name = SplitLine[5],
-                               payer = SplitLine[0] + "" + SplitLine[1],
+                               payer = SplitLine[0] + " " + SplitLine[1],
                                payment = decimal.Parse(SplitLine[2].Replace(".", ",")),
                                date = SplitLine[3],
                                account_num = long.Parse(SplitLine[4])
@@ -119,7 +132,6 @@ namespace ConsoleApp1
             var query =
                 from values in database
                 group values by values.city into g
-
                 select new TransactionData
                 {
                     city = g.Key,
@@ -141,7 +153,20 @@ namespace ConsoleApp1
             
             var options = new JsonSerializerOptions { WriteIndented = true };
             string jsonString = JsonSerializer.Serialize(query, options);
-           // Console.WriteLine(jsonString);
+            Console.WriteLine(jsonString);
+
+            ///Stage 4 - Save
+            var fileName = jsonData.folder_b_path + "\\file-"+ DateTime.Now.ToString("dd-MM-yyyy") + ".log"; 
+            FileStream log = File.Create(fileName);
+
+            StreamWriter logWriter = new StreamWriter(log);
+            logWriter.Write("LOG INFO " + DateTime.Now + $"\nparsed_files: {procFileCounter}\nparsed_lines: {procLineCounter}\nfound_errors: {ErrorCounter}\ninvalid_files: [ ");
+            foreach(var path in invalidFilesPath)
+            {
+                logWriter.Write(path + ", ");
+            }
+            logWriter.Write(']');
+            logWriter.Flush();
 
             Console.ReadLine();
         }
