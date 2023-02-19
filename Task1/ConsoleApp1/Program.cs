@@ -43,19 +43,36 @@ namespace ConsoleApp1
         public string date { get; set; }
         public long account_number { get; set; }
     }
+    public class ConcurrencyProperties
+    {
+        public int ErrorCounter { get; set; }
+        public int procLineCounter { get; set; }
+        public int procFileCounter { get; set; }
+        public ConcurrentQueue<string> filepathes { get; set; }
+        public ConcurrentQueue<string> validLines { get; set; }
+        public ConcurrentQueue<string> invalidFilesPath { get; set; }
 
+        public ConcurrencyProperties()
+        {
+            filepathes = new ConcurrentQueue<string>();
+            validLines = new ConcurrentQueue<string>();
+            invalidFilesPath = new ConcurrentQueue<string>();
+            ErrorCounter= 0; procFileCounter= 0; procLineCounter= 0;
+        }
+
+    }
     internal class Program
     {
         static void Main(string[] args)
         {
             /// Stage 1 - Reading file names
             const int tasksNum = 3;
-            int ErrorCounter = 0, 
-                procLineCounter = 0, 
-                procFileCounter = 0;
 
+            ConcurrencyProperties properties= new ConcurrencyProperties();
             Config jsonData = JsonSerializer.Deserialize<Config>(System.IO.File.ReadAllText("D:\\Student\\Radency\\Task1\\ConsoleApp1\\Task1\\ConsoleApp1\\config.json"));
-            ConcurrentQueue<string> filepathes = new ConcurrentQueue<string>();
+
+            string cityPattern = @"'[a-z]+,\s[a-z]+\s[0-9]+,\s[0-9]+'", 
+                   pattern = @"[a-z]+,[a-z]+,'[a-z]+,\s[a-z]+\s\d+,\s\d+',\d+[.]\d+,[0-9]{4}-[0-9]{2}-[0-9]{2},[0-9]+,[a-z]+";
 
             Task DirectoryReading = Task.Factory.StartNew(() =>
             {
@@ -64,7 +81,7 @@ namespace ConsoleApp1
                 {
                     FileInfo fileinf = new FileInfo(file);
                     if (fileinf.Extension == ".txt" || fileinf.Extension == ".csv") {
-                        filepathes.Enqueue(file);
+                        properties.filepathes.Enqueue(file);
                     };
 
                 }
@@ -82,10 +99,10 @@ namespace ConsoleApp1
                 Task t = Task.Factory.StartNew(() =>
                 {
                     Thread.Sleep(100);
-                    while (filepathes.TryDequeue(out var file))
+                    while (properties.filepathes.TryDequeue(out var file))
                     {
                         StreamReader reader = new StreamReader(file);
-                        string line, pattern = @"[a-z]+,[a-z]+,'[a-z]+,\s[a-z]+\s\d+,\s\d+',\d+[.]\d+,[0-9]{4}-[0-9]{2}-[0-9]{2},[0-9]+,[a-z]+";
+                        string line;
                        
                         FileInfo fileinf = new FileInfo(file);
                         bool invalidLine = false;
@@ -95,16 +112,16 @@ namespace ConsoleApp1
                             if (Regex.IsMatch(line, pattern, RegexOptions.IgnoreCase))
                             {
                                 validLines.Add(line);
-                                procLineCounter++;
+                                properties.procLineCounter++;
                             }
                             else
                             {
-                                ErrorCounter++;
+                                properties.ErrorCounter++;
                                 invalidLine= true;
                             }
                         }
                         if (invalidLine) invalidFilesPath.Add(file);
-                        procFileCounter++;
+                        properties.procFileCounter++;
                         reader.Close();
                     }
                 });
@@ -114,7 +131,6 @@ namespace ConsoleApp1
 
 
             ///Stage 3 - Transofrmation
-            string cityPattern = @"'[a-z]+,\s[a-z]+\s[0-9]+,\s[0-9]+'";
             var database = from Line in validLines
                            let toSplit = Regex.Match(Line, cityPattern, RegexOptions.IgnoreCase).Value
                            let SplitLine = Line.Replace(toSplit + ',', "").Split(',')
@@ -160,7 +176,7 @@ namespace ConsoleApp1
             FileStream log = File.Create(fileName);
 
             StreamWriter logWriter = new StreamWriter(log);
-            logWriter.Write("LOG INFO " + DateTime.Now + $"\nparsed_files: {procFileCounter}\nparsed_lines: {procLineCounter}\nfound_errors: {ErrorCounter}\ninvalid_files: [ ");
+            logWriter.Write("LOG INFO " + DateTime.Now + $"\nparsed_files: {properties.procFileCounter}\nparsed_lines: {properties.procLineCounter}\nfound_errors: {properties.ErrorCounter}\ninvalid_files: [ ");
             foreach(var path in invalidFilesPath)
             {
                 logWriter.Write(path + ", ");
