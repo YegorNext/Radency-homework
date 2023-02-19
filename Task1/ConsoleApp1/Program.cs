@@ -49,14 +49,14 @@ namespace ConsoleApp1
         public int procLineCounter { get; set; }
         public int procFileCounter { get; set; }
         public ConcurrentQueue<string> filepathes { get; set; }
-        public ConcurrentQueue<string> validLines { get; set; }
-        public ConcurrentQueue<string> invalidFilesPath { get; set; }
+        public ConcurrentBag<string> validLines { get; set; }
+        public ConcurrentBag<string> invalidFilesPath { get; set; }    
 
         public ConcurrencyProperties()
         {
             filepathes = new ConcurrentQueue<string>();
-            validLines = new ConcurrentQueue<string>();
-            invalidFilesPath = new ConcurrentQueue<string>();
+            validLines = new ConcurrentBag<string>();
+            invalidFilesPath = new ConcurrentBag<string>();
             ErrorCounter= 0; procFileCounter= 0; procLineCounter= 0;
         }
 
@@ -90,9 +90,6 @@ namespace ConsoleApp1
 
 
             //// Stage 2 - Validating
-            ConcurrentBag<string> validLines = new ConcurrentBag<string>();
-            ConcurrentBag<string> invalidFilesPath = new ConcurrentBag<string>();
-
             var FileValidatingList = new List<Task>();
             for (int i = 0; i < tasksNum; i++)
             {
@@ -111,7 +108,7 @@ namespace ConsoleApp1
                         {
                             if (Regex.IsMatch(line, pattern, RegexOptions.IgnoreCase))
                             {
-                                validLines.Add(line);
+                                properties.validLines.Add(line);
                                 properties.procLineCounter++;
                             }
                             else
@@ -120,7 +117,7 @@ namespace ConsoleApp1
                                 invalidLine= true;
                             }
                         }
-                        if (invalidLine) invalidFilesPath.Add(file);
+                        if (invalidLine) properties.invalidFilesPath.Add(file);
                         properties.procFileCounter++;
                         reader.Close();
                     }
@@ -131,7 +128,7 @@ namespace ConsoleApp1
 
 
             ///Stage 3 - Transofrmation
-            var database = from Line in validLines
+            var database = from Line in properties.validLines
                            let toSplit = Regex.Match(Line, cityPattern, RegexOptions.IgnoreCase).Value
                            let SplitLine = Line.Replace(toSplit + ',', "").Split(',')
                            let city = toSplit.Replace("\'", "").Split(',')[0]
@@ -177,7 +174,7 @@ namespace ConsoleApp1
 
             StreamWriter logWriter = new StreamWriter(log);
             logWriter.Write("LOG INFO " + DateTime.Now + $"\nparsed_files: {properties.procFileCounter}\nparsed_lines: {properties.procLineCounter}\nfound_errors: {properties.ErrorCounter}\ninvalid_files: [ ");
-            foreach(var path in invalidFilesPath)
+            foreach(var path in properties.invalidFilesPath)
             {
                 logWriter.Write(path + ", ");
             }
