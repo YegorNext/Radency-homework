@@ -10,21 +10,9 @@
             "payment": 720.0,
             "date": "2022-27-05",
             "account_number": 7654321
-          },
-          {
-            "name": "Mike Wiksen",
-            "payment": 720.0,
-            "date": "2022-27-05",
-            "account_number": 7654321
-          },
-          {
-            "name": "Mike Wiksen",
-            "payment": 720.0,
-            "date": "2022-27-05",
-            "account_number": 7654321
           }
         ],
-        "total": 2160.0
+        "total": 720.0
       },
       {
         "name": "Water",
@@ -39,6 +27,6 @@
         "total": 500.0
       }
     ],
-    "total": 2660.0
+    "total": 1220.0
   }
 ]
