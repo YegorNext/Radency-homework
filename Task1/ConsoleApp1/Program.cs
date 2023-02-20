@@ -280,7 +280,7 @@ namespace ConsoleApp1
         ////////////////  Обробник події таймеру. Створення meta.log  ////////////////
         private static void OnTimedEvent(Object source, System.Timers.ElapsedEventArgs e)     ///Stage 4 - Save
         {
-            var fileName = jsonData.folder_b_path + "\\meta" + ".log";
+            var fileName = jsonData.folder_b_path + "\\" + DateTime.Now.ToString("dd-MM-yyyy") + "\\meta" + ".log";
             FileStream log = File.Create(fileName);
 
             StreamWriter logWriter = new StreamWriter(log);
